@@ -41,7 +41,7 @@ import org.apache.http.nio.conn.ManagedNHttpClientConnection;
 import org.apache.http.nio.reactor.IOSession;
 import org.apache.http.protocol.HttpContext;
 
-class CPoolProxy implements ManagedNHttpClientConnection {
+public class CPoolProxy implements ManagedNHttpClientConnection {
 
     private volatile CPoolEntry poolEntry;
 
@@ -50,7 +50,7 @@ class CPoolProxy implements ManagedNHttpClientConnection {
         this.poolEntry = entry;
     }
 
-    CPoolEntry getPoolEntry() {
+    public CPoolEntry getPoolEntry() {
         return this.poolEntry;
     }
 

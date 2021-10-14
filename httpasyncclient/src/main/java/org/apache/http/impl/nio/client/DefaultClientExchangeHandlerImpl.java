@@ -38,6 +38,7 @@ import org.apache.http.client.methods.HttpExecutionAware;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.concurrent.BasicFuture;
 import org.apache.http.conn.ConnectionKeepAliveStrategy;
+import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.nio.ContentDecoder;
 import org.apache.http.nio.ContentEncoder;
 import org.apache.http.nio.IOControl;
@@ -178,6 +179,23 @@ class DefaultClientExchangeHandlerImpl<T> extends AbstractClientExchangeHandler 
                 final T result = this.responseConsumer.getResult();
                 final Exception ex = this.responseConsumer.getException();
                 if (ex == null) {
+                    if (result instanceof BasicHttpResponse) {
+                        final BasicHttpResponse basicHttpResponse = (BasicHttpResponse)result;
+                        basicHttpResponse.request_status = this.request_status;
+                        basicHttpResponse.create_0 = this.create_0;
+                        basicHttpResponse.create = this.create;
+                        basicHttpResponse.end_0 = this.end_0;
+                        basicHttpResponse.create_1 = this.create_1;
+                        basicHttpResponse.end_1 = this.end_1;
+                        basicHttpResponse.create_2 = this.create_2;
+                        basicHttpResponse.end_2 = this.end_2;
+                        basicHttpResponse.work_find = this.work_find;
+                        basicHttpResponse.send_over = this.send_over;
+                        basicHttpResponse.work_receive = this.work_receive;
+                        basicHttpResponse.response_over = this.response_over;
+                        basicHttpResponse.execute_start = this.execute_start;
+                        basicHttpResponse.execute_end = this.execute_end;
+                    }
                     this.resultFuture.completed(result);
                 } else {
                     this.resultFuture.failed(ex);

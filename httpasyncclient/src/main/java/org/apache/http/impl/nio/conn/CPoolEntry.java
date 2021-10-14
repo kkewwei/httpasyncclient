@@ -38,11 +38,12 @@ import org.apache.http.nio.conn.ManagedNHttpClientConnection;
 import org.apache.http.pool.PoolEntry;
 
 @Contract(threading = ThreadingBehavior.SAFE)
-class CPoolEntry extends PoolEntry<HttpRoute, ManagedNHttpClientConnection> {
+public class CPoolEntry extends PoolEntry<HttpRoute, ManagedNHttpClientConnection> {
 
     private final Log log;
     private volatile int socketTimeout;
     private volatile boolean routeComplete;
+
 
     public CPoolEntry(
             final Log log,

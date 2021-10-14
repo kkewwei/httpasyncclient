@@ -45,6 +45,8 @@ import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.conn.ConnectionKeepAliveStrategy;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.conn.routing.RouteTracker;
+import org.apache.http.impl.nio.conn.CPoolEntry;
+import org.apache.http.impl.nio.conn.CPoolProxy;
 import org.apache.http.nio.NHttpClientConnection;
 import org.apache.http.nio.conn.NHttpClientConnectionManager;
 import org.apache.http.nio.protocol.HttpAsyncClientExchangeHandler;
@@ -59,7 +61,7 @@ import org.apache.http.util.Asserts;
  * Instances of this class are expected to be accessed by one thread at a time only.
  * The {@link #cancel()} method can be called concurrently by multiple threads.
  */
-abstract class AbstractClientExchangeHandler implements HttpAsyncClientExchangeHandler {
+abstract class AbstractClientExchangeHandler extends HttpAsyncClientExchangeHandler {
 
     private static final AtomicLong COUNTER = new AtomicLong(1);
 
@@ -326,6 +328,26 @@ abstract class AbstractClientExchangeHandler implements HttpAsyncClientExchangeH
             }
 
             final HttpContext context = managedConn.getContext();
+            if (managedConn instanceof CPoolProxy) {
+                final CPoolProxy cPoolProxy = (CPoolProxy)managedConn;
+                final CPoolEntry cPoolEntry = cPoolProxy.getPoolEntry();
+                this.request_status = cPoolEntry.request_status;
+                this.create_0 = cPoolEntry.create_0;
+                this.create = cPoolEntry.create;
+                this.end_0 = cPoolEntry.end_0;
+                this.create_1 = cPoolEntry.create_1;
+                this.end_1 = cPoolEntry.end_1;
+                this.create_2 = cPoolEntry.create_2;
+                this.end_2 = cPoolEntry.end_2;
+                this.work_find = cPoolEntry.work_find;
+                this.send_over = cPoolEntry.send_over;
+                this.work_receive = cPoolEntry.work_receive;
+                this.response_over = cPoolEntry.response_over;
+                this.execute_start = cPoolEntry.execute_start;
+                this.execute_end = cPoolEntry.execute_end;
+
+            }
+
             synchronized (context) {
                 context.setAttribute(HttpAsyncRequestExecutor.HTTP_HANDLER, this);
                 if (managedConn.isStale()) {
