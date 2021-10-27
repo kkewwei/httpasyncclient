@@ -35,12 +35,12 @@ import org.apache.http.impl.nio.DefaultNHttpClientConnection;
 import org.apache.http.impl.nio.reactor.AbstractIODispatch;
 import org.apache.http.nio.NHttpClientEventHandler;
 import org.apache.http.nio.reactor.IOSession;
-
+// 初始化时，所有工作线程（cpu个线程）共享一个
 class InternalIODispatch extends AbstractIODispatch<DefaultNHttpClientConnection> {
 
     private final Log log = LogFactory.getLog(InternalIODispatch.class);
 
-    private final NHttpClientEventHandler handler;
+    private final NHttpClientEventHandler handler; // HttpAsyncRequestExecutor
 
     public InternalIODispatch(final NHttpClientEventHandler handler) {
         super();
@@ -55,12 +55,12 @@ class InternalIODispatch extends AbstractIODispatch<DefaultNHttpClientConnection
     protected DefaultNHttpClientConnection createConnection(final IOSession session) {
         throw new IllegalStateException("Connection must be created by connection manager");
     }
-
+    // 有新创建的管道交接到worker线程了
     @Override
     protected void onConnected(final DefaultNHttpClientConnection conn) {
-        final Object attachment = conn.getContext().getAttribute(IOSession.ATTACHMENT_KEY);
+        final Object attachment = conn.getContext().getAttribute(IOSession.ATTACHMENT_KEY);// HttpRoute
         try {
-            this.handler.connected(conn, attachment);
+            this.handler.connected(conn, attachment);// 设置写事件了
         } catch (final Exception ex) {
             this.handler.exception(conn, ex);
         }
@@ -78,12 +78,12 @@ class InternalIODispatch extends AbstractIODispatch<DefaultNHttpClientConnection
 
     @Override
     protected void onInputReady(final DefaultNHttpClientConnection conn) {
-        conn.consumeInput(this.handler);
+        conn.consumeInput(this.handler);// ManagedNHttpClientConnectionImpl,实际跑到DefaultNHttpClientConnection.consumeInput()中
     }
 
     @Override
     protected void onOutputReady(final DefaultNHttpClientConnection conn) {
-        conn.produceOutput(this.handler);
+        conn.produceOutput(this.handler);// 会发送数据
     }
 
     @Override

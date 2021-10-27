@@ -76,12 +76,12 @@ import org.apache.http.protocol.HttpCoreContext;
 import org.apache.http.protocol.HttpProcessor;
 import org.apache.http.protocol.ImmutableHttpProcessor;
 import org.apache.http.protocol.RequestTargetHost;
-
+// 每个RestClient只产生一个，是InternalHttpAsyncClient的属性之一
 class MainClientExec implements InternalClientExec {
 
     private final Log log = LogFactory.getLog(getClass());
 
-    private final HttpProcessor httpProcessor;
+    private final HttpProcessor httpProcessor;// ImmutableHttpProcessor, 请求拦截器
     private final HttpProcessor proxyHttpProcessor;
     private final HttpRoutePlanner routePlanner;
     private final AuthenticationStrategy targetAuthStrategy;
@@ -113,17 +113,17 @@ class MainClientExec implements InternalClientExec {
 
     @Override
     public void prepare(
-            final HttpHost target,
-            final HttpRequest original,
+            final HttpHost target, // 远程一个ip
+            final HttpRequest original,// 原始请求
             final InternalState state,
-            final AbstractClientExchangeHandler handler) throws HttpException, IOException {
+            final AbstractClientExchangeHandler handler) throws HttpException, IOException {// DefaultClientExchangeHandlerImpl
         if (this.log.isDebugEnabled()) {
             this.log.debug("[exchange: " + state.getId() + "] start execution");
         }
 
         final HttpClientContext localContext = state.getLocalContext();
 
-        if (original instanceof Configurable) {
+        if (original instanceof Configurable) { //HttpPost
             final RequestConfig config = ((Configurable) original).getConfig();
             if (config != null) {
                 localContext.setRequestConfig(config);
@@ -136,12 +136,12 @@ class MainClientExec implements InternalClientExec {
         }
 
         final HttpRequestWrapper request = HttpRequestWrapper.wrap(original);
-        final HttpRoute route = this.routePlanner.determineRoute(target, request, localContext);
+        final HttpRoute route = this.routePlanner.determineRoute(target, request, localContext);// 变成HttpRoute
 
-        handler.setRoute(route);
+        handler.setRoute(route);// 赋值DefaultClientExchangeHandlerImpl
 
         state.setMainRequest(request);
-        handler.setCurrentRequest(request);
+        handler.setCurrentRequest(request); // 设置了需要使用的request
 
         prepareRequest(state, handler);
     }
@@ -149,7 +149,7 @@ class MainClientExec implements InternalClientExec {
     @Override
     public HttpRequest generateRequest(
             final InternalState state,
-            final AbstractClientExchangeHandler handler) throws IOException, HttpException {
+            final AbstractClientExchangeHandler handler) throws IOException, HttpException {//DefaultClientExchangeHandlerImpl
 
         final HttpRoute route = handler.getRoute();
 
@@ -241,14 +241,14 @@ class MainClientExec implements InternalClientExec {
         }
 
         final NHttpClientConnection managedConn = handler.getConnection();
-        localContext.setAttribute(HttpCoreContext.HTTP_CONNECTION, managedConn);
+        localContext.setAttribute(HttpCoreContext.HTTP_CONNECTION, managedConn); // http.connection
         final RequestConfig config = localContext.getRequestConfig();
         if (config.getSocketTimeout() > 0) {
             managedConn.setSocketTimeout(config.getSocketTimeout());
         }
         return currentRequest;
     }
-
+    // 产生内容
     @Override
     public void produceContent(
             final InternalState state,
@@ -286,8 +286,8 @@ class MainClientExec implements InternalClientExec {
             this.log.debug("[exchange: " + state.getId() + "] Response received " + response.getStatusLine());
         }
         final HttpClientContext context = state.getLocalContext();
-        context.setAttribute(HttpClientContext.HTTP_RESPONSE, response);
-        this.httpProcessor.process(response, context);
+        context.setAttribute(HttpClientContext.HTTP_RESPONSE, response);// http.response
+        this.httpProcessor.process(response, context); // 响应过滤器
 
         handler.setCurrentResponse(response);
 
@@ -306,13 +306,13 @@ class MainClientExec implements InternalClientExec {
                 }
             }
         } else {
-            if (!handleResponse(state, handler)) {
+            if (!handleResponse(state, handler)) {// 进来
                 state.setFinalResponse(response);
             }
         }
-        if (state.getFinalResponse() != null) {
+        if (state.getFinalResponse() != null) {// 进来
             final HttpAsyncResponseConsumer<?> responseConsumer = state.getResponseConsumer();
-            responseConsumer.responseReceived(response);
+            responseConsumer.responseReceived(response);// 会对其中的buffer长度进行初始化
         }
     }
 
@@ -325,15 +325,15 @@ class MainClientExec implements InternalClientExec {
             this.log.debug("[exchange: " + state.getId() + "] Consume content");
         }
         if (state.getFinalResponse() != null) {
-            final HttpAsyncResponseConsumer<?> responseConsumer = state.getResponseConsumer();
-            responseConsumer.consumeContent(decoder, ioctrl);
+            final HttpAsyncResponseConsumer<?> responseConsumer = state.getResponseConsumer();//HeapBufferedAsyncResponseConsumer
+            responseConsumer.consumeContent(decoder, ioctrl);// 从decoder读取后，放入HeapBufferedAsyncResponseConsumer
         } else {
             final ByteBuffer tmpbuf = state.getTmpbuf();
             tmpbuf.clear();
             decoder.read(tmpbuf);
         }
     }
-
+    // 接受完response
     @Override
     public void responseCompleted(
             final InternalState state,
@@ -375,7 +375,7 @@ class MainClientExec implements InternalClientExec {
         Object userToken = localContext.getUserToken();
         if (userToken == null) {
             userToken = this.userTokenHandler.getUserToken(localContext);
-            localContext.setAttribute(HttpClientContext.USER_TOKEN, userToken);
+            localContext.setAttribute(HttpClientContext.USER_TOKEN, userToken); // http.user-token
         }
 
         if (state.getFinalResponse() != null) {
@@ -384,7 +384,7 @@ class MainClientExec implements InternalClientExec {
             if (this.log.isDebugEnabled()) {
                 this.log.debug("[exchange: " + state.getId() + "] Response processed");
             }
-            handler.releaseConnection();
+            handler.releaseConnection();//真正的释放管道
         } else {
             if (state.getRedirect() != null) {
                 final HttpUriRequest redirect = state.getRedirect();
@@ -466,7 +466,7 @@ class MainClientExec implements InternalClientExec {
                     request.getRequestLine().getUri(), ex);
         }
     }
-
+    //在主线程中，还没开始从Pool中申请空闲连接
     private void prepareRequest(
             final InternalState state,
             final AbstractClientExchangeHandler handler) throws IOException, HttpException {
@@ -513,11 +513,11 @@ class MainClientExec implements InternalClientExec {
                         new UsernamePasswordCredentials(userinfo));
             }
         }
-
-        localContext.setAttribute(HttpClientContext.HTTP_REQUEST, currentRequest);
-        localContext.setAttribute(HttpClientContext.HTTP_TARGET_HOST, target);
-        localContext.setAttribute(HttpClientContext.HTTP_ROUTE, route);
-        this.httpProcessor.process(currentRequest, localContext);
+        // 已经放进来了
+        localContext.setAttribute(HttpClientContext.HTTP_REQUEST, currentRequest); // http.request，原始请求
+        localContext.setAttribute(HttpClientContext.HTTP_TARGET_HOST, target); // http.target_host
+        localContext.setAttribute(HttpClientContext.HTTP_ROUTE, route); // http.route
+        this.httpProcessor.process(currentRequest, localContext);// 请求拦截器
     }
 
     private HttpRequest createConnectRequest(

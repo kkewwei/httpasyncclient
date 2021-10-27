@@ -51,7 +51,7 @@ import org.apache.http.nio.protocol.HttpAsyncRequestProducer;
 import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
-
+// 一个client只会产生一个
 class InternalHttpAsyncClient extends CloseableHttpAsyncClientBase {
 
     private final Log log = LogFactory.getLog(getClass());
@@ -59,10 +59,10 @@ class InternalHttpAsyncClient extends CloseableHttpAsyncClientBase {
     private final NHttpClientConnectionManager connmgr;
     private final ConnectionReuseStrategy connReuseStrategy;
     private final ConnectionKeepAliveStrategy keepaliveStrategy;
-    private final InternalClientExec exec;
+    private final InternalClientExec exec; //MainClientExec 
     private final Lookup<CookieSpecProvider> cookieSpecRegistry;
     private final Lookup<AuthSchemeProvider> authSchemeRegistry;
-    private final CookieStore cookieStore;
+    private final CookieStore cookieStore; // 共享的属性
     private final CredentialsProvider credentialsProvider;
     private final RequestConfig defaultConfig;
 
@@ -89,31 +89,31 @@ class InternalHttpAsyncClient extends CloseableHttpAsyncClientBase {
         this.credentialsProvider = credentialsProvider;
         this.defaultConfig = defaultConfig;
     }
-
+    // 所有管道共享的属性
     private void setupContext(final HttpClientContext context) {
-        if (context.getAttribute(HttpClientContext.TARGET_AUTH_STATE) == null) {
+        if (context.getAttribute(HttpClientContext.TARGET_AUTH_STATE) == null) { // http.auth.target-scope
             context.setAttribute(HttpClientContext.TARGET_AUTH_STATE, new AuthState());
         }
-        if (context.getAttribute(HttpClientContext.PROXY_AUTH_STATE) == null) {
+        if (context.getAttribute(HttpClientContext.PROXY_AUTH_STATE) == null) { // http.auth.proxy-scope
             context.setAttribute(HttpClientContext.PROXY_AUTH_STATE, new AuthState());
         }
-        if (context.getAttribute(HttpClientContext.AUTHSCHEME_REGISTRY) == null) {
+        if (context.getAttribute(HttpClientContext.AUTHSCHEME_REGISTRY) == null) { // http.authscheme-registry
             context.setAttribute(HttpClientContext.AUTHSCHEME_REGISTRY, this.authSchemeRegistry);
         }
-        if (context.getAttribute(HttpClientContext.COOKIESPEC_REGISTRY) == null) {
+        if (context.getAttribute(HttpClientContext.COOKIESPEC_REGISTRY) == null) { // http.cookiespec-registry
             context.setAttribute(HttpClientContext.COOKIESPEC_REGISTRY, this.cookieSpecRegistry);
         }
-        if (context.getAttribute(HttpClientContext.COOKIE_STORE) == null) {
+        if (context.getAttribute(HttpClientContext.COOKIE_STORE) == null) { // http.cookie-store
             context.setAttribute(HttpClientContext.COOKIE_STORE, this.cookieStore);
         }
-        if (context.getAttribute(HttpClientContext.CREDS_PROVIDER) == null) {
+        if (context.getAttribute(HttpClientContext.CREDS_PROVIDER) == null) { // http.auth.credentials-provider
             context.setAttribute(HttpClientContext.CREDS_PROVIDER, this.credentialsProvider);
         }
-        if (context.getAttribute(HttpClientContext.REQUEST_CONFIG) == null) {
+        if (context.getAttribute(HttpClientContext.REQUEST_CONFIG) == null) { // http.request-config
             context.setAttribute(HttpClientContext.REQUEST_CONFIG, this.defaultConfig);
         }
     }
-
+    // http发请求，就会跑到这里
     @Override
     public <T> Future<T> execute(
             final HttpAsyncRequestProducer requestProducer,
@@ -121,15 +121,15 @@ class InternalHttpAsyncClient extends CloseableHttpAsyncClientBase {
             final HttpContext context,
             final FutureCallback<T> callback) {
         ensureRunning();
-        final BasicFuture<T> future = new BasicFuture<T>(callback);
-        final HttpClientContext localcontext = HttpClientContext.adapt(
+        final BasicFuture<T> future = new BasicFuture<T>(callback);//在释放完管道后，DefaultClientExchangeHandlerImpl.responseCompleted()会置位成功
+        final HttpClientContext localcontext = HttpClientContext.adapt( // HttpClientContext,比较重要，和state搭配使用
             context != null ? context : new BasicHttpContext());
         setupContext(localcontext);
 
-        @SuppressWarnings("resource")
+        @SuppressWarnings("resource")  // 保存着Request，在HttpAsyncRequestExecutor.requestReady()中会使用Request
         final DefaultClientExchangeHandlerImpl<T> handler = new DefaultClientExchangeHandlerImpl<T>(
             this.log,
-            requestProducer,
+            requestProducer,// 包含的有请求体内容
             responseConsumer,
             localcontext,
             future,

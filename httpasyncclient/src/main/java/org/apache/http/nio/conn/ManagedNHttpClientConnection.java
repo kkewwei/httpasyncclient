@@ -39,7 +39,7 @@ import org.apache.http.nio.reactor.IOSession;
  * to obtain SSL session details.
  *
  * @since 4.0
- */
+ */ // 代表一个受管理的connection，生命周期归connection manager管理
 public interface ManagedNHttpClientConnection extends NHttpClientConnection, HttpInetConnection {
 
     /**

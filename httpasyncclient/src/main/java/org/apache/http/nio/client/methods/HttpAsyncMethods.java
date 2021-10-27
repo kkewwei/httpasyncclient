@@ -409,7 +409,7 @@ public final class HttpAsyncMethods {
 
         };
     }
-
+    // 包含的原始url+reuqest
     static class RequestProducerImpl extends BasicAsyncRequestProducer {
 
         protected RequestProducerImpl(

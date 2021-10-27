@@ -90,7 +90,7 @@ import org.apache.http.util.Asserts;
  * however, can be adjusted using {@link ConnPoolControl} methods.
  *
  * @since 4.0
- */
+ */ // 一个RestClient只产生一个， 管理CPool的
 @Contract(threading = ThreadingBehavior.SAFE)
 public class PoolingNHttpClientConnectionManager
        implements NHttpClientConnectionManager, ConnPoolControl<HttpRoute> {
@@ -99,9 +99,9 @@ public class PoolingNHttpClientConnectionManager
 
     static final String IOSESSION_FACTORY_REGISTRY = "http.iosession-factory-registry";
 
-    private final ConnectingIOReactor ioreactor;
+    private final ConnectingIOReactor ioreactor; // DefaultConnectingIOReactor
     private final ConfigData configData;
-    private final CPool pool;
+    private final CPool pool; // CPool
     private final Registry<SchemeIOSessionStrategy> iosessionFactoryRegistry;
 
     private static Registry<SchemeIOSessionStrategy> getDefaultRegistry() {
@@ -216,9 +216,9 @@ public class PoolingNHttpClientConnectionManager
         }
     }
 
-    @Override
+    @Override// eventDispatch=InternalIODispatch
     public void execute(final IOEventDispatch eventDispatch) throws IOException {
-        this.ioreactor.execute(eventDispatch);
+        this.ioreactor.execute(eventDispatch);   // DefaultConnectingIOReactor，将跑到AbstractMultiworkerIOReactor.execute()
     }
 
     public void shutdown(final long waitMs) throws IOException {
@@ -271,14 +271,14 @@ public class PoolingNHttpClientConnectionManager
             final HttpRoute route,
             final Object state,
             final long connectTimeout,
-            final long leaseTimeout,
+            final long leaseTimeout, // 就是connectionRequestTimeout
             final TimeUnit tunit,
             final FutureCallback<NHttpClientConnection> callback) {
         Args.notNull(route, "HTTP route");
         if (this.log.isDebugEnabled()) {
             this.log.debug("Connection request: " + format(route, state) + formatStats(route));
         }
-        final BasicFuture<NHttpClientConnection> resultFuture = new BasicFuture<NHttpClientConnection>(callback);
+        final BasicFuture<NHttpClientConnection> resultFuture = new BasicFuture<NHttpClientConnection>(callback);// 在AbstractClientExchangeHandler.requestConnection()定义，主要会标志写事件，
         final HttpHost host;
         if (route.getProxyHost() != null) {
             host = route.getProxyHost();
@@ -286,7 +286,7 @@ public class PoolingNHttpClientConnectionManager
             host = route.getTargetHost();
         }
         final SchemeIOSessionStrategy sf = this.iosessionFactoryRegistry.lookup(
-                host.getSchemeName());
+                host.getSchemeName());// http还是https
         if (sf == null) {
             resultFuture.failed(new UnsupportedSchemeException(host.getSchemeName() +
                     " protocol is not supported"));
@@ -296,14 +296,14 @@ public class PoolingNHttpClientConnectionManager
                 connectTimeout, leaseTimeout, tunit != null ? tunit : TimeUnit.MILLISECONDS,
                 new FutureCallback<CPoolEntry>() {
 
-                    @Override
+                    @Override// 1.主线程若直接获取到了连接权限,保存在entry，调用AbstractNIOConnPool将进来。2.worker线程对新产生的管道，也会进来设置写事件。
                     public void completed(final CPoolEntry entry) {
                         Asserts.check(entry.getConnection() != null, "Pool entry with no connection");
                         if (log.isDebugEnabled()) {
                             log.debug("Connection leased: " + format(entry) + formatStats(entry.getRoute()));
                         }
-                        final NHttpClientConnection managedConn = CPoolProxy.newProxy(entry);
-                        if (!resultFuture.completed(managedConn)) {
+                        final NHttpClientConnection managedConn = CPoolProxy.newProxy(entry);// 仅仅封装下，成为CPoolProxy
+                        if (!resultFuture.completed(managedConn)) {// 设置写事件，select()唤醒
                             pool.release(entry, true);
                         }
                     }
@@ -372,10 +372,10 @@ public class PoolingNHttpClientConnectionManager
             if (this.log.isDebugEnabled()) {
                 this.log.debug("Releasing connection: " + format(entry) + formatStats(entry.getRoute()));
             }
-            final NHttpClientConnection conn = entry.getConnection();
+            final NHttpClientConnection conn = entry.getConnection();//ManagedNHttpClientConnectionImpl
             try {
                 if (conn.isOpen()) {
-                    entry.setState(state);
+                    entry.setState(state);// 置为null
                     entry.updateExpiry(keepalive, tunit != null ? tunit : TimeUnit.MILLISECONDS);
                     if (this.log.isDebugEnabled()) {
                         final String s;
@@ -387,8 +387,8 @@ public class PoolingNHttpClientConnectionManager
                         this.log.debug("Connection " + format(entry) + " can be kept alive " + s);
                     }
                 }
-            } finally {
-                this.pool.release(entry, conn.isOpen() && entry.isRouteComplete());
+            } finally {// 管道释放
+                this.pool.release(entry, conn.isOpen() && entry.isRouteComplete());// 管道还在打开着，也完成了请求
                 if (this.log.isDebugEnabled()) {
                     this.log.debug("Connection released: " + format(entry) + formatStats(entry.getRoute()));
                 }
@@ -598,7 +598,7 @@ public class PoolingNHttpClientConnectionManager
     static class InternalConnectionFactory implements NIOConnFactory<HttpRoute, ManagedNHttpClientConnection> {
 
         private final ConfigData configData;
-        private final NHttpConnectionFactory<ManagedNHttpClientConnection> connFactory;
+        private final NHttpConnectionFactory<ManagedNHttpClientConnection> connFactory;//跑到ManagedNHttpClientConnection.create()
 
         InternalConnectionFactory(
                 final ConfigData configData,
@@ -608,7 +608,7 @@ public class PoolingNHttpClientConnectionManager
             this.connFactory = connFactory != null ? connFactory :
                 ManagedNHttpClientConnectionFactory.INSTANCE;
         }
-
+        //产生一个生命周期受connection manager管理的管道
         @Override
         public ManagedNHttpClientConnection create(
                 final HttpRoute route, final IOSession iosession) throws IOException {
@@ -625,7 +625,7 @@ public class PoolingNHttpClientConnectionManager
             if (config == null) {
                 config = ConnectionConfig.DEFAULT;
             }
-            final ManagedNHttpClientConnection conn = this.connFactory.create(iosession, config);
+            final ManagedNHttpClientConnection conn = this.connFactory.create(iosession, config);// 跑到ManagedNHttpClientConnection.create()
             iosession.setAttribute(IOEventDispatch.CONNECTION_KEY, conn);
             return conn;
         }
@@ -661,8 +661,8 @@ public class PoolingNHttpClientConnectionManager
                 host = route.getTargetHost();
             }
             final int port = this.schemePortResolver.resolve(host);
-            final InetAddress[] addresses = this.dnsResolver.resolve(host.getHostName());
-            return new InetSocketAddress(addresses[0], port);
+            final InetAddress[] addresses = this.dnsResolver.resolve(host.getHostName()); // 会把域名映射出来，比如:qa.lc.data.sankuai.com映射5个ips, admin.gh1.lc.data.sankuai.com映射一个vip
+            return new InetSocketAddress(addresses[0], port);// 这里只取第一个
         }
 
     }

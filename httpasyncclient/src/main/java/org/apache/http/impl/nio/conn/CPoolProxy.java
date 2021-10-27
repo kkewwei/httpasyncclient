@@ -115,9 +115,9 @@ class CPoolProxy implements ManagedNHttpClientConnection {
 
     @Override
     public void requestOutput() {
-        final NHttpClientConnection conn = getConnection();
+        final NHttpClientConnection conn = getConnection(); // ManagedNHttpClientConnectionImpl
         if (conn != null) {
-            conn.requestOutput();
+            conn.requestOutput();// 直接标志写事件，跑到NHttpConnectionBase.requestOutput()中(ManagedNHttpClientConnectionImpl父类)
         }
     }
 

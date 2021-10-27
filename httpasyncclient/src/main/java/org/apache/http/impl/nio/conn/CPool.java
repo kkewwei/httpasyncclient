@@ -39,13 +39,13 @@ import org.apache.http.nio.pool.AbstractNIOConnPool;
 import org.apache.http.nio.pool.NIOConnFactory;
 import org.apache.http.nio.pool.SocketAddressResolver;
 import org.apache.http.nio.reactor.ConnectingIOReactor;
-
+// 一个RestClient只会产生一个，在PoolingNHttpClientConnectionManager构造中产生，
 @Contract(threading = ThreadingBehavior.SAFE)
 class CPool extends AbstractNIOConnPool<HttpRoute, ManagedNHttpClientConnection, CPoolEntry> {
 
     private final Log log = LogFactory.getLog(CPool.class);
 
-    private final long timeToLive;
+    private final long timeToLive;// -1
     private final TimeUnit tunit;
 
     public CPool(
@@ -69,9 +69,9 @@ class CPool extends AbstractNIOConnPool<HttpRoute, ManagedNHttpClientConnection,
     @Override
     protected void onLease(final CPoolEntry entry) {
         final NHttpClientConnection conn = entry.getConnection();
-        conn.setSocketTimeout(entry.getSocketTimeout());
+        conn.setSocketTimeout(entry.getSocketTimeout());// 设置数据传输通讯时间
     }
-
+   //当释放完成后
     @Override
     protected void onRelease(final CPoolEntry entry) {
         final NHttpClientConnection conn = entry.getConnection();

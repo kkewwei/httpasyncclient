@@ -53,7 +53,7 @@ import org.apache.http.util.Args;
  *
  * @since 4.0
  */
-@Contract(threading = ThreadingBehavior.SAFE)
+@Contract(threading = ThreadingBehavior.SAFE) // 初始化时：父类InternalHttpAsyncClient
 public abstract class CloseableHttpAsyncClient implements HttpAsyncClient, Closeable {
 
     public abstract boolean isRunning();

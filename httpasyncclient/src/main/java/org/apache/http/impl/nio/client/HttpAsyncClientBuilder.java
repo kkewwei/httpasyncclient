@@ -666,7 +666,7 @@ public class HttpAsyncClientBuilder {
             }
             final ConnectingIOReactor ioreactor = IOReactorUtils.create(
                 defaultIOReactorConfig != null ? defaultIOReactorConfig : IOReactorConfig.DEFAULT, threadFactory);
-            final PoolingNHttpClientConnectionManager poolingmgr = new PoolingNHttpClientConnectionManager(
+            final PoolingNHttpClientConnectionManager poolingmgr = new PoolingNHttpClientConnectionManager(// 若用户没有配置，那么就使用默认的
                     ioreactor,
                     RegistryBuilder.<SchemeIOSessionStrategy>create()
                         .register("http", NoopIOSessionStrategy.INSTANCE)
@@ -863,7 +863,7 @@ public class HttpAsyncClientBuilder {
             if (threadFactory == null) {
                 threadFactory = Executors.defaultThreadFactory();
             }
-            eventHandler = this.eventHandler;
+            eventHandler = this.eventHandler; 
             if (eventHandler == null) {
                 eventHandler = new HttpAsyncRequestExecutor();
             }

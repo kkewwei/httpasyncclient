@@ -54,7 +54,7 @@ class ManagedNHttpClientConnectionImpl
     private final Log wirelog;
     private final Log log;
 
-    private final String id;
+    private final String id; // http-outgoing-1
     private IOSession original;
 
     public ManagedNHttpClientConnectionImpl(
@@ -62,7 +62,7 @@ class ManagedNHttpClientConnectionImpl
             final Log log,
             final Log headerlog,
             final Log wirelog,
-            final IOSession iosession,
+            final IOSession iosession,// IOSessionImpl
             final int buffersize,
             final int fragmentSizeHint,
             final ByteBufferAllocator allocator,

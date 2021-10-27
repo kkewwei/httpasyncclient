@@ -34,18 +34,18 @@ import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.nio.protocol.HttpAsyncRequestProducer;
 import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
-
+// 每次查询都会产生一个，包含请求原始体，放在DefaultClientExchangeHandlerImpl里面
 class InternalState {
 
     private final long id;
-    private final HttpAsyncRequestProducer requestProducer;
-    private final HttpAsyncResponseConsumer<?> responseConsumer;
+    private final HttpAsyncRequestProducer requestProducer;// // 最原始的url+请求体
+    private final HttpAsyncResponseConsumer<?> responseConsumer;// 从ContentDecoder中读取解析后的字节流后，放入responseConsumer中
     private final HttpClientContext localContext;
 
-    private HttpRequestWrapper mainRequest;
+    private HttpRequestWrapper mainRequest;//真正的原始请求
     private HttpResponse finalResponse;
     private ByteBuffer tmpbuf;
-    private boolean requestContentProduced;
+    private boolean requestContentProduced; // 发送前的content是否已经编码为字节流
     private int execCount;
 
     private int redirectCount;
@@ -68,7 +68,7 @@ class InternalState {
     }
 
     public HttpAsyncRequestProducer getRequestProducer() {
-        return requestProducer;
+        return requestProducer;// // 最原始的url+请求体
     }
 
     public HttpAsyncResponseConsumer<?> getResponseConsumer() {

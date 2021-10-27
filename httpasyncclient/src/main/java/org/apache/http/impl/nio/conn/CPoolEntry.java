@@ -48,7 +48,7 @@ class CPoolEntry extends PoolEntry<HttpRoute, ManagedNHttpClientConnection> {
             final Log log,
             final String id,
             final HttpRoute route,
-            final ManagedNHttpClientConnection conn,
+            final ManagedNHttpClientConnection conn,// ManagedNHttpClientConnectionImpl
             final long timeToLive, final TimeUnit tunit) {
         super(id, route, conn, timeToLive, tunit);
         this.log = log;

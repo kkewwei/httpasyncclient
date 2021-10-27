@@ -51,19 +51,19 @@ import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
  * <p>
  * Instances of this class are expected to be accessed by one thread at a time only.
  * The {@link #cancel()} method can be called concurrently by multiple threads.
- */
+ */ // 每次查询时候在InternalHttpAsyncClient.execute()都会产生一个。作为复用时唯一纽带，会被设置在http.nio.exchange-handler
 class DefaultClientExchangeHandlerImpl<T> extends AbstractClientExchangeHandler {
 
-    private final HttpAsyncRequestProducer requestProducer;
-    private final HttpAsyncResponseConsumer<T> responseConsumer;
-    private final BasicFuture<T> resultFuture;
-    private final InternalClientExec exec;
-    private final InternalState state;
+    private final HttpAsyncRequestProducer requestProducer;// RequestProducerImpl
+    private final HttpAsyncResponseConsumer<T> responseConsumer; //HeapBufferedAsyncResponseConsumer，state中也存放了一份，从ContentDecoder中读取解析后的字节流后，放入responseConsumer中。
+    private final BasicFuture<T> resultFuture; //响应用户就放在这里了
+    private final InternalClientExec exec; // 就是MainClientExec
+    private final InternalState state;// 每次查询都会产生一个，包含请求原始体，放在DefaultClientExchangeHandlerImpl里面
 
     public DefaultClientExchangeHandlerImpl(
             final Log log,
             final HttpAsyncRequestProducer requestProducer,
-            final HttpAsyncResponseConsumer<T> responseConsumer,
+            final HttpAsyncResponseConsumer<T> responseConsumer,//缓存Response的
             final HttpClientContext localContext,
             final BasicFuture<T> resultFuture,
             final NHttpClientConnectionManager connmgr,
@@ -71,11 +71,11 @@ class DefaultClientExchangeHandlerImpl<T> extends AbstractClientExchangeHandler 
             final ConnectionKeepAliveStrategy keepaliveStrategy,
             final InternalClientExec exec) {
         super(log, localContext, connmgr, connReuseStrategy, keepaliveStrategy);
-        this.requestProducer = requestProducer;
+         this.requestProducer = requestProducer;
         this.responseConsumer = responseConsumer;
         this.resultFuture = resultFuture;
         this.exec = exec;
-        this.state = new InternalState(getId(), requestProducer, responseConsumer, localContext);
+        this.state = new InternalState(getId(), requestProducer, responseConsumer, localContext);// 产生当前的state
     }
 
     @Override
@@ -117,10 +117,10 @@ class DefaultClientExchangeHandlerImpl<T> extends AbstractClientExchangeHandler 
         }
         return cancelled;
     }
-
+    // 发请求的主线程会跑到这里，不是worker和boss线程
     public void start() throws HttpException, IOException {
         final HttpHost target = this.requestProducer.getTarget();
-        final HttpRequest original = this.requestProducer.generateRequest();
+        final HttpRequest original = this.requestProducer.generateRequest();// 原始请求内容
 
         if (original instanceof HttpExecutionAware) {
             ((HttpExecutionAware) original).setCancellable(this);
@@ -154,9 +154,9 @@ class DefaultClientExchangeHandlerImpl<T> extends AbstractClientExchangeHandler 
     @Override
     public void consumeContent(
             final ContentDecoder decoder, final IOControl ioctrl) throws IOException {
-        this.exec.consumeContent(this.state, decoder, ioctrl);
-        if (!decoder.isCompleted() && this.responseConsumer.isDone()) {
-            markConnectionNonReusable();
+        this.exec.consumeContent(this.state, decoder, ioctrl);// 真正读取content部分
+        if (!decoder.isCompleted() && this.responseConsumer.isDone()) {// 一般都是跳过
+            markConnectionNonReusable();// 若从decoder中没有读取完
             try {
                 markCompleted();
                 releaseConnection();
@@ -169,21 +169,21 @@ class DefaultClientExchangeHandlerImpl<T> extends AbstractClientExchangeHandler 
 
     @Override
     public void responseCompleted() throws IOException, HttpException {
-        this.exec.responseCompleted(this.state, this);
+        this.exec.responseCompleted(this.state, this);//1. 释放到Pool操作
 
         if (this.state.getFinalResponse() != null || this.resultFuture.isDone()) {
-            try {
+            try {// 会进来
                 markCompleted();
-                releaseConnection();
-                final T result = this.responseConsumer.getResult();
+                releaseConnection();// 没啥用
+                final T result = this.responseConsumer.getResult();//BasicHttpResponse
                 final Exception ex = this.responseConsumer.getException();
                 if (ex == null) {
-                    this.resultFuture.completed(result);
+                    this.resultFuture.completed(result);// 2.响应用户,
                 } else {
                     this.resultFuture.failed(ex);
                 }
             } finally {
-                close();
+                close();// 没啥用
             }
         } else {
             NHttpClientConnection localConn = getConnection();

@@ -58,27 +58,27 @@ import org.apache.http.util.Asserts;
  * <p>
  * Instances of this class are expected to be accessed by one thread at a time only.
  * The {@link #cancel()} method can be called concurrently by multiple threads.
- */
+ */// DefaultClientExchangeHandlerImpl,每次查询时候都会产生一个
 abstract class AbstractClientExchangeHandler implements HttpAsyncClientExchangeHandler {
 
     private static final AtomicLong COUNTER = new AtomicLong(1);
 
     protected final Log log;
 
-    private final long id;
+    private final long id;// 每次请求，都会产生一个自增的id
     private final HttpClientContext localContext;
-    private final NHttpClientConnectionManager connmgr;
+    private final NHttpClientConnectionManager connmgr; // PoolingNHttpClientConnectionManager
     private final ConnectionReuseStrategy connReuseStrategy;
     private final ConnectionKeepAliveStrategy keepaliveStrategy;
     private final AtomicReference<Future<NHttpClientConnection>> connectionFutureRef;
-    private final AtomicReference<NHttpClientConnection> managedConnRef;
+    private final AtomicReference<NHttpClientConnection> managedConnRef;//CPoolProxy
     private final AtomicReference<HttpRoute> routeRef;
     private final AtomicReference<RouteTracker> routeTrackerRef;
     private final AtomicBoolean routeEstablished;
     private final AtomicReference<Long> validDurationRef;
-    private final AtomicReference<HttpRequestWrapper> requestRef;
+    private final AtomicReference<HttpRequestWrapper> requestRef;// 保证着真正需要使用的SearchReuqest
     private final AtomicReference<HttpResponse> responseRef;
-    private final AtomicBoolean completed;
+    private final AtomicBoolean completed;// 管道释放完后，就标志为完成
     private final AtomicBoolean closed;
 
     AbstractClientExchangeHandler(
@@ -89,7 +89,7 @@ abstract class AbstractClientExchangeHandler implements HttpAsyncClientExchangeH
             final ConnectionKeepAliveStrategy keepaliveStrategy) {
         super();
         this.log = log;
-        this.id = COUNTER.getAndIncrement();
+        this.id = COUNTER.getAndIncrement();// 每次请求，都会产生一个自增的id
         this.localContext = localContext;
         this.connmgr = connmgr;
         this.connReuseStrategy = connReuseStrategy;
@@ -242,7 +242,7 @@ abstract class AbstractClientExchangeHandler implements HttpAsyncClientExchangeH
             final Long validDuration = this.validDurationRef.get();
             if (validDuration != null) {
                 final Object userToken = this.localContext.getUserToken();
-                this.connmgr.releaseConnection(localConn, userToken, validDuration, TimeUnit.MILLISECONDS);
+                this.connmgr.releaseConnection(localConn, userToken, validDuration, TimeUnit.MILLISECONDS);// 释放管道
             } else {
                 try {
                     localConn.close();
@@ -262,7 +262,7 @@ abstract class AbstractClientExchangeHandler implements HttpAsyncClientExchangeH
 
     final void discardConnection() {
         final NHttpClientConnection localConn = this.managedConnRef.getAndSet(null);
-        if (localConn != null) {
+        if (localConn != null) {// 都会跳过
             try {
                 localConn.shutdown();
                 if (this.log.isDebugEnabled()) {
@@ -306,8 +306,8 @@ abstract class AbstractClientExchangeHandler implements HttpAsyncClientExchangeH
         }
         return keepAlive;
     }
-
-    private void connectionAllocated(final NHttpClientConnection managedConn) {
+    // 1.主线程，直接复用了可用空闲管道。2.工作线程，创建新管道后也会进来。 主要是将这个管道的上下文中设置了http.nio.exchange-handler=DefaultClientExchangeHandlerImpl
+    private void connectionAllocated(final NHttpClientConnection managedConn) { // CPoolProxy
         try {
             if (this.log.isDebugEnabled()) {
                 this.log.debug("[exchange: " + this.id + "] Connection allocated: " + managedConn);
@@ -325,13 +325,13 @@ abstract class AbstractClientExchangeHandler implements HttpAsyncClientExchangeH
                 this.routeTrackerRef.set(null);
             }
 
-            final HttpContext context = managedConn.getContext();
-            synchronized (context) {
-                context.setAttribute(HttpAsyncRequestExecutor.HTTP_HANDLER, this);
+            final HttpContext context = managedConn.getContext(); // SessionHttpContext
+            synchronized (context) {// 里面包含request, 后面会用
+                context.setAttribute(HttpAsyncRequestExecutor.HTTP_HANDLER, this); // http.nio.exchange-handler，后面就是根据这个DefaultClientExchangeHandlerImpl，将key与请求关联起来的
                 if (managedConn.isStale()) {
                     failed(new ConnectionClosedException("Connection closed"));
                 } else {
-                    managedConn.requestOutput();
+                    managedConn.requestOutput();// 直接标志写事件
                 }
             }
         } catch (final RuntimeException runex) {
@@ -374,17 +374,17 @@ abstract class AbstractClientExchangeHandler implements HttpAsyncClientExchangeH
 
         final Object userToken = this.localContext.getUserToken();
         final RequestConfig config = this.localContext.getRequestConfig();
-        this.connectionFutureRef.set(this.connmgr.requestConnection(
+        this.connectionFutureRef.set(this.connmgr.requestConnection( // 这里比较重要
                 route,
-                userToken,
-                config.getConnectTimeout(),
-                config.getConnectionRequestTimeout(),
+                userToken,// userToken=null
+                config.getConnectTimeout(), // 5000
+                config.getConnectionRequestTimeout(), // 3000,超时是获取lock.lock()的时间
                 TimeUnit.MILLISECONDS,
                 new FutureCallback<NHttpClientConnection>() {
 
-                    @Override
+                    @Override// 获得连接权限，将进到这里。1.主线程复用空闲管道。2.工作线程创建新管道，都会进来
                     public void completed(final NHttpClientConnection managedConn) {
-                        connectionAllocated(managedConn);
+                        connectionAllocated(managedConn);// 1.上下文中设置了http.nio.exchange-handler=DefaultClientExchangeHandlerImpl 2.会标志写事件
                     }
 
                     @Override
@@ -407,7 +407,7 @@ abstract class AbstractClientExchangeHandler implements HttpAsyncClientExchangeH
     abstract boolean executionCancelled();
 
     @Override
-    public final void close() {
+    public final void close() {// 没晒用
         if (this.closed.compareAndSet(false, true)) {
             discardConnection();
             releaseResources();
