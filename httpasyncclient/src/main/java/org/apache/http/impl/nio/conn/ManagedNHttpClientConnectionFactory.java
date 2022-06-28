@@ -63,7 +63,7 @@ public class ManagedNHttpClientConnectionFactory implements NHttpConnectionFacto
 
     public static final ManagedNHttpClientConnectionFactory INSTANCE = new ManagedNHttpClientConnectionFactory();
 
-    private final ByteBufferAllocator allocator;
+    private final ByteBufferAllocator allocator; // 内存分配器，比如收到http响应后，响应用该对象接收
     private final NHttpMessageWriterFactory<HttpRequest> requestWriterFactory;
     private final NHttpMessageParserFactory<HttpResponse> responseParserFactory;
 

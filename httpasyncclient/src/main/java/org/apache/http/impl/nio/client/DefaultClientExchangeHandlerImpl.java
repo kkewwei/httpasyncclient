@@ -51,7 +51,7 @@ import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
  * <p>
  * Instances of this class are expected to be accessed by one thread at a time only.
  * The {@link #cancel()} method can be called concurrently by multiple threads.
- */ // 每次查询时候在InternalHttpAsyncClient.execute()都会产生一个。作为复用时唯一纽带，会被设置在http.nio.exchange-handler
+ */ // 每次查询时候在InternalHttpAsyncClient.execute()都会产生一个。作为管道复用时唯一纽带，会被设置在http.nio.exchange-handler
 class DefaultClientExchangeHandlerImpl<T> extends AbstractClientExchangeHandler {
 
     private final HttpAsyncRequestProducer requestProducer;// RequestProducerImpl

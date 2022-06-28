@@ -55,7 +55,7 @@ abstract class CloseableHttpAsyncClientBase extends CloseableHttpPipeliningClien
         super();
         this.connmgr = connmgr;
         if (threadFactory != null && handler != null) {
-            this.reactorThread = threadFactory.newThread(new Runnable() {
+            this.reactorThread = threadFactory.newThread(new Runnable() { // 初始化boss线程
 
                 @Override
                 public void run() {

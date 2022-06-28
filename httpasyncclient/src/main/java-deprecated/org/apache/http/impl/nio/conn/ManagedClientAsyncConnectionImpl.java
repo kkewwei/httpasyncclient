@@ -104,7 +104,7 @@ class ManagedClientAsyncConnectionImpl implements ManagedClientAsyncConnection {
             throw new ConnectionShutdownException();
         }
         final IOSession session = local.getConnection();
-        return (ClientAsyncConnection) session.getAttribute(IOEventDispatch.CONNECTION_KEY);
+        return (ClientAsyncConnection) session.getAttribute(IOEventDispatch.CONNECTION_KEY); //
     }
 
     private HttpPoolEntry ensurePoolEntry() {

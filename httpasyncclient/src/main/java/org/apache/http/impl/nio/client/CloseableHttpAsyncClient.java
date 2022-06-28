@@ -73,8 +73,8 @@ public abstract class CloseableHttpAsyncClient implements HttpAsyncClient, Close
             final HttpHost target, final HttpRequest request, final HttpContext context,
             final FutureCallback<HttpResponse> callback) {
         return execute(
-                HttpAsyncMethods.create(target, request),
-                HttpAsyncMethods.createConsumer(),
+                HttpAsyncMethods.create(target, request), //
+                HttpAsyncMethods.createConsumer(), // response产生存放期
                 context, callback);
     }
 

@@ -126,7 +126,7 @@ class InternalHttpAsyncClient extends CloseableHttpAsyncClientBase {
             context != null ? context : new BasicHttpContext());
         setupContext(localcontext);
 
-        @SuppressWarnings("resource")  // 保存着Request，在HttpAsyncRequestExecutor.requestReady()中会使用Request
+        @SuppressWarnings("resource")  // 保存着Request，在HttpAsyncRequestExecutor.requestReady()中会使用Request，管道复用纽带
         final DefaultClientExchangeHandlerImpl<T> handler = new DefaultClientExchangeHandlerImpl<T>(
             this.log,
             requestProducer,// 包含的有请求体内容

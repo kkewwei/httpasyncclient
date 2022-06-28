@@ -731,7 +731,7 @@ public class HttpAsyncClientBuilder {
             schemePortResolver = DefaultSchemePortResolver.INSTANCE;
         }
 
-        HttpProcessor httpprocessor = this.httpprocessor;
+        HttpProcessor httpprocessor = this.httpprocessor; //
         if (httpprocessor == null) {
 
             String userAgent = this.userAgent;
@@ -860,7 +860,7 @@ public class HttpAsyncClientBuilder {
         NHttpClientEventHandler eventHandler = null;
         if (!this.connManagerShared) {
             threadFactory = this.threadFactory;
-            if (threadFactory == null) {
+            if (threadFactory == null) { // 使用默认线程池命名规范
                 threadFactory = Executors.defaultThreadFactory();
             }
             eventHandler = this.eventHandler; 

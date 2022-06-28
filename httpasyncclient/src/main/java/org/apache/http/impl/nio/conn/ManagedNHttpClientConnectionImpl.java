@@ -46,10 +46,10 @@ import org.apache.http.nio.reactor.ssl.SSLIOSession;
 import org.apache.http.nio.util.ByteBufferAllocator;
 import org.apache.http.util.Args;
 import org.apache.http.util.Asserts;
-
+// 只有在新管道建立的时候，才会创建这个对象,与SelectionKeyImpl、ManagedNHttpClientConnectionImpl绑定死了。和管道一起，是重复利用的
 class ManagedNHttpClientConnectionImpl
                     extends DefaultNHttpClientConnection implements ManagedNHttpClientConnection {
-
+    
     private final Log headerlog;
     private final Log wirelog;
     private final Log log;
